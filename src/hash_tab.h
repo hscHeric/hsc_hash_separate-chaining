@@ -126,13 +126,13 @@ void hash_tab_free(hash_tab_t *hash_table);
  * @param hash_table Tabela de hash.
  * @param hash_tab_iterator Iterador da tabela de hash.
  */
-void hash_tab_iterator_init(hash_tab_t *hash_table, hash_tab_iterator_t *hash_tab_iterator);
+void hash_tab_iterator_init(hash_tab_t *hash_table, hash_tab_iterator_t *iterator);
 
 /**
  * @brief Incrementa o iterador da tabela de hash.
  * 
  * @param hash_tab_iterator Iterador da tabela de hash.
  */
-void hash_tab_iterator_increment(hash_tab_iterator_t *hash_tab_iterator);
+void hash_tab_iterator_increment(hash_tab_iterator_t *iterator);
 
 #endif // !_HASH_TAB_H_

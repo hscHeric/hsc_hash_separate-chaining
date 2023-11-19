@@ -155,27 +155,26 @@ void hash_tab_remove(hash_tab_t *hash_table, void *key, size_t key_len) {
 }
 
 void *hash_tab_grow(hash_tab_t *hash_table, size_t size) {
-  hash_tab_t *p_hash_table = hash_tab_init(size, hash_table->hash_func);
-
-  if (p_hash_table == NULL) {
+  hash_tab_t *new_hash = hash_tab_init(size, hash_table->hash_func);
+  if (new_hash == NULL) {
     return NULL;
   }
 
-  void *iterator_return_values;
-  hash_tab_iterator_t iterator;
-  hash_tab_iterator_init(p_hash_table, &iterator);
-
-  //Itera sobre a tabela de hash antiga e insere os valores na nova tabela
-  for (; iterator.key != NULL; hash_tab_iterator_increment(&iterator)) {
-    iterator_return_values = hash_tab_insert(p_hash_table, iterator.key, iterator.key_len, iterator.value, iterator.value_len);
-    if (iterator_return_values == NULL) { //Erro ao inserir na nova tabela
-      hash_tab_free(p_hash_table);
+  void* i_rv; //Iterator return values
+  hash_tab_iterator_t i;
+  hash_tab_iterator_init(hash_table, &i);
+  for (; i.key != NULL; hash_tab_iterator_increment(&i)) {
+    i_rv = hash_tab_insert(new_hash, i.key, i.key_len, i.value, i.value_len);
+    if (i_rv == NULL) { 
+      //Erro de inserção
+      hash_tab_free(new_hash);
       return NULL;
     }
   }
 
+  //Destroi a hash_tab antiga e retorna a nova hash_table com o novo valor
   hash_tab_free(hash_table);
-  return p_hash_table;
+  return new_hash;
 }
 
 void hash_tab_free(hash_tab_t *hash_table) {
@@ -196,51 +195,54 @@ void hash_tab_free(hash_tab_t *hash_table) {
   free(hash_table);
 }
 
-void hash_tab_iterator_init(hash_tab_t *hash_table, hash_tab_iterator_t *hash_tab_iterator){
-  hash_tab_iterator->hash_tab_internal_t.hash_table = hash_table;
-  hash_tab_iterator->hash_tab_internal_t.node = NULL;
-  hash_tab_iterator->hash_tab_internal_t.index = -1;
+void hash_tab_iterator_init(hash_tab_t *hash_table, hash_tab_iterator_t *iterator){
+  iterator->hash_tab_internal_t.hash_table = hash_table; //Seta a hash a ser iterada
+  iterator->hash_tab_internal_t.node = NULL;
+  iterator->hash_tab_internal_t.index = -1;
 
-  hash_tab_iterator_increment(hash_tab_iterator); // Inicializa o iterador com o index 0
+  hash_tab_iterator_increment(iterator); //incrementa o iterador para 0
 }
 
-void hash_tab_iterator_increment(hash_tab_iterator_t *hash_tab_iterator) {
-  hash_tab_t *hash_table = hash_tab_iterator->hash_tab_internal_t.hash_table;
-  int index = hash_tab_iterator->hash_tab_internal_t.index;
-
-  // Se o bucket atual for o último bucket da tabela
-  if (hash_tab_iterator->hash_tab_internal_t.node == NULL || hash_tab_iterator->hash_tab_internal_t.node->next == NULL) {
+void hash_tab_iterator_increment(hash_tab_iterator_t *iterator) {
+  hash_tab_t *hashtable = iterator->hash_tab_internal_t.hash_table;
+  int index = iterator->hash_tab_internal_t.index;
+  
+  if (iterator->hash_tab_internal_t.node == NULL || iterator->hash_tab_internal_t.node->next == NULL) {
     index++;
   } else {
-    hash_tab_iterator->hash_tab_internal_t.node = hash_tab_iterator->hash_tab_internal_t.node->next;
-    hash_tab_iterator->key = hash_tab_iterator->hash_tab_internal_t.node->key;
-    hash_tab_iterator->key_len = hash_tab_iterator->hash_tab_internal_t.node->key_len;
-    hash_tab_iterator->value = hash_tab_iterator->hash_tab_internal_t.node->value;
-    hash_tab_iterator->value_len = hash_tab_iterator->hash_tab_internal_t.node->value_len;
-    return;
-  }
-  
-  // Procura o próximo bucket não vazio
-  while (hash_table->buckets[index] == NULL && index < (int)hash_table->size) {
-    index++;
-  }
-
-  if (index >= (int) hash_table->size) {
-    hash_tab_iterator->hash_tab_internal_t.node = NULL;
-    hash_tab_iterator->hash_tab_internal_t.index = (int) hash_table->size;
-    hash_tab_iterator->key = NULL;
-    hash_tab_iterator->value = NULL;
-    hash_tab_iterator->value_len = 0;
-    hash_tab_iterator->key_len = 0;
-
+    //Proximo nó da lista
+    iterator->hash_tab_internal_t.node = iterator->hash_tab_internal_t.node->next;
+    iterator->key = iterator->hash_tab_internal_t.node->key;
+    iterator->value = iterator->hash_tab_internal_t.node->value;
+    iterator->key_len = iterator->hash_tab_internal_t.node->key_len;
+    iterator->value_len = iterator->hash_tab_internal_t.node->value_len;
     return;
   }
 
-  // Se o bucket não estiver vazio e não for o último bucket da tabela
-  hash_tab_iterator->hash_tab_internal_t.node = hash_table->buckets[index];
-  hash_tab_iterator->hash_tab_internal_t.index = index;
-  hash_tab_iterator->key = hash_tab_iterator->hash_tab_internal_t.node->key;
-  hash_tab_iterator->value = hash_tab_iterator->hash_tab_internal_t.node->value;
-  hash_tab_iterator->key_len = hash_tab_iterator->hash_tab_internal_t.node->key_len;
-  hash_tab_iterator->value_len = hash_tab_iterator->hash_tab_internal_t.node->value_len;
+  //Procura o próximo nó
+  while (hashtable->buckets[index] == NULL && index < (int) hashtable->size) {
+    index++; //Enquanto o valor dos buckets[index] for nulo e não tiver chegado ao final da hash_tab
+  }
+
+  if (index >= (int) hashtable->size) {
+    //Fim da hash_tab 
+
+    iterator->hash_tab_internal_t.node = NULL;
+    iterator->hash_tab_internal_t.index = (int) hashtable->size;
+
+    iterator->key = NULL;
+    iterator->value = NULL;
+    iterator->value_len = 0;
+    iterator->key_len = 0;
+
+    return;
+  }
+
+  //Proximo item da hash_tab
+  iterator->hash_tab_internal_t.node = hashtable->buckets[index];
+  iterator->hash_tab_internal_t.index = index;
+  iterator->key = iterator->hash_tab_internal_t.node->key;
+  iterator->value = iterator->hash_tab_internal_t.node->value;
+  iterator->key_len = iterator->hash_tab_internal_t.node->key_len;
+  iterator->value_len = iterator->hash_tab_internal_t.node->value_len;
 }
